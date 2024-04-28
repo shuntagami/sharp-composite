@@ -10,21 +10,43 @@ interface TilePosition {
 
 const getTilePositions = (folderPath: string): TilePosition[] => {
   const fileNames = fs.readdirSync(folderPath);
-  return fileNames.map((fileName) => {
-    const [x, y] = fileName.split(".png")[0]?.split("-")?.map(Number);
-    return { x, y, path: path.join(folderPath, fileName) };
-  });
+  return fileNames
+    .map((fileName) => {
+      const parts = fileName.split(".png")[0]?.split("-")?.map(Number);
+      if (!parts) {
+        return null;
+      }
+      if (
+        parts.length === 2 &&
+        !isNaN(parts[0] as number) &&
+        !isNaN(parts[1] as number)
+      ) {
+        const [x, y] = parts;
+        return { x, y, path: path.join(folderPath, fileName) };
+      }
+      return null;
+    })
+    .filter((position) => position !== null) as TilePosition[];
 };
 
 const createCompositeImage = async (
   tilePositions: TilePosition[],
   outputFilePath: string
 ): Promise<void> => {
-  if (tilePositions.length === 0) return;
+  if (tilePositions.length === 0) {
+    return;
+  }
+
+  if (!tilePositions[0]) {
+    return;
+  }
 
   const firstTile = await sharp(tilePositions[0].path).metadata();
-  const tileWidth = firstTile.width!;
-  const tileHeight = firstTile.height!;
+  const tileWidth = firstTile.width;
+  const tileHeight = firstTile.height;
+  if (!tileWidth || !tileHeight) {
+    return;
+  }
   const maxX = Math.max(...tilePositions.map((tile) => tile.x));
   const maxY = Math.max(...tilePositions.map((tile) => tile.y));
 
