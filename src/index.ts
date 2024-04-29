@@ -1,6 +1,7 @@
 import sharp from "sharp";
-import fs from "fs";
+import fs, { existsSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
+import AdmZip from "adm-zip";
 
 interface TilePosition {
   x: number;
@@ -69,8 +70,25 @@ const createCompositeImage = async (
 };
 
 const main = async (): Promise<void> => {
-  const folderPath = "./images/tiles";
-  const outputFilePath = "./results/out.png";
+  const zipPath = "./images/1.zip";
+  const zip = new AdmZip(zipPath);
+  const entries = zip.getEntries();
+  const targetZoomLevel = 4;
+  const folderPath = `./images/${targetZoomLevel}`;
+  for (const entry of entries) {
+    if (entry.entryName.startsWith(`${targetZoomLevel}/`)) {
+      const outputPath = path.join("images", entry.entryName);
+      if (!existsSync(path.dirname(outputPath))) {
+        mkdirSync(path.dirname(outputPath), { recursive: true });
+      }
+
+      const data = zip.readFile(entry);
+      if (data !== null) {
+        writeFileSync(outputPath, data);
+      }
+    }
+  }
+  const outputFilePath = `./results/out_zoom${targetZoomLevel}.png`;
 
   const tilePositions = getTilePositions(folderPath);
   await createCompositeImage(tilePositions, outputFilePath);
